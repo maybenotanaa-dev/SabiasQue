@@ -1,0 +1,69 @@
+name: Compilar Sabias Que
+
+on:
+  workflow_dispatch:
+  push:
+
+jobs:
+  build:
+    runs-on: macos-latest
+
+    steps:
+      - name: Descargar archivos
+        uses: actions/checkout@v4
+
+      - name: Descomprimir proyecto
+        run: |
+          unzip -o SabiasQue_GitHub_Subir.zip -d proyecto
+          find proyecto -maxdepth 4 -type f
+
+      - name: Preparar proyecto Xcode
+        run: |
+          cd proyecto
+          rm -rf SabiasQue.xcodeproj
+
+          cat > project.yml <<'EOF'
+          name: SabiasQue
+
+          options:
+            bundleIdPrefix: com.estudiante
+
+          targets:
+            SabiasQue:
+              type: application
+              platform: iOS
+              deploymentTarget: "15.0"
+              sources:
+                - path: SabiasQue
+              settings:
+                base:
+                  PRODUCT_BUNDLE_IDENTIFIER: com.estudiante.SabiasQue
+                  INFOPLIST_FILE: SabiasQue/Info.plist
+                  TARGETED_DEVICE_FAMILY: "1,2"
+          EOF
+
+      - name: Instalar XcodeGen
+        run: brew install xcodegen
+
+      - name: Generar proyecto Xcode
+        run: |
+          cd proyecto
+          xcodegen generate
+
+      - name: Compilar aplicación
+        run: |
+          cd proyecto
+          xcodebuild \
+            -project SabiasQue.xcodeproj \
+            -scheme SabiasQue \
+            -sdk iphonesimulator \
+            -configuration Debug \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+
+      - name: Guardar compilación
+        uses: actions/upload-artifact@v4
+        with:
+          name: SabiasQue-build
+          path: proyecto/build
